@@ -37,7 +37,8 @@ class ParrotLoss(nn.Module):
         stop_target = stop_target.reshape(B, -1, self.n_frames_per_step)
         stop_target = stop_target[:, :, 0]
 
-        padded = torch.tensor(text_target.data.new(B,1).zero_())
+        #padded = torch.tensor(text_target.data.new(B,1).zero_())
+        padded = text_target.data.new(B, 1).zero_().clone().detach()
         text_target = torch.cat((text_target, padded), dim=-1)
         
         # adding the ending token for target

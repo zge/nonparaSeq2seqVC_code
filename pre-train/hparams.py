@@ -11,7 +11,7 @@ def create_hparams(hparams_string=None, verbose=False):
         epochs=200,
         iters_per_checkpoint=2000,
         seed=1234,
-        distributed_run=True,
+        distributed_run=False,
         dist_backend="nccl",
         dist_url="tcp://localhost:54321",
         cudnn_enabled=True,
