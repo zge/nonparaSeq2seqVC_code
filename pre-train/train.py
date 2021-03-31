@@ -5,6 +5,10 @@ import math
 from numpy import finfo
 import numpy as np
 
+import sys
+if os.path.isdir(os.path.join(os.getcwd(),'pre-train')):
+    sys.path.append('pre-train')
+
 import torch
 from distributed import apply_gradient_allreduce
 import torch.distributed as dist
@@ -58,7 +62,7 @@ def prepare_dataloaders(hparams):
     train_sampler = DistributedSampler(trainset) \
         if hparams.distributed_run else None
 
-    train_loader = DataLoader(trainset, num_workers=1, shuffle=True,
+    train_loader = DataLoader(trainset, num_workers=1, shuffle=False,
                               sampler=train_sampler,
                               batch_size=hparams.batch_size, pin_memory=False,
                               drop_last=True, collate_fn=collate_fn)
@@ -321,7 +325,8 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, n_gpus,
                 print(("Train {} {} {:.6f} Grad Norm {:.6f} {:.2f}s/it".format(
                     task, iteration, redl_main+redl_sc, grad_norm_main, duration)))
                 logger.log_training(
-                    redl_main+redl_sc, reduced_losses, reduced_acces, grad_norm_main, learning_rate, duration, iteration)
+                    redl_main+redl_sc, reduced_losses, reduced_acces, grad_norm_main,
+                    learning_rate, duration, iteration)
 
             if (iteration % hparams.iters_per_checkpoint == 0):
                 validate(model, criterion, valset, iteration,
@@ -335,8 +340,7 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, n_gpus,
 
             iteration += 1
 
-
-if __name__ == '__main__':
+def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-o', '--output_directory', type=str,
                         help='directory to save checkpoints')
@@ -350,20 +354,72 @@ if __name__ == '__main__':
                         required=False, help='number of gpus')
     parser.add_argument('--rank', type=int, default=0,
                         required=False, help='rank of current gpu')
+    parser.add_argument('--gpu', type=int, default=0,
+                        required=False, help='current gpu device id')
     parser.add_argument('--group_name', type=str, default='group_name',
                         required=False, help='Distributed group name')
     parser.add_argument('--hparams', type=str,
                         required=False, help='comma separated name=value pairs')
+    return parser.parse_args()
 
-    args = parser.parse_args()
+
+if __name__ == '__main__':
+
+    # # runtime mode
+    args = parse_args()
+
+    # # interactive mode
+    # args = argparse.ArgumentParser()
+    # args.log_directory = 'logdir'
+    # args.checkpoint_path = None
+    # args.warm_start = False
+    # args.n_gpus = 2
+    # args.rank = 0
+    # args.gpu = 1
+    # args.group_name = 'group_name'
+    # args.output_directory = 'outdir/vctk/test_wgan_bs16'
+    # # hparams = ["training_list=/data/evs/VCTK/VCTK-Corpus-0.92/list/audio-txt-nframe-nphone_no-indian_train.txt",
+    # #            "validation_list=/data/evs/VCTK/VCTK-Corpus-0.92/list/audio-txt-nframe-nphone_no-indian_valid.txt",
+    # #            "mel_mean_std=/data/evs/VCTK/VCTK-Corpus-0.92/spec/mel_mean_std.npy"]
+    # hparams = ["training_list=/data/evs/VCTK/VCTK-wgan/list/wgan-txt-nframe-nphone_no-indian_train.txt",
+    #            "validation_list=/data/evs/VCTK/VCTK-wgan/list/wgan-txt-nframe-nphone_no-indian_valid.txt",
+    #            "mel_mean_std=/data/evs/VCTK/VCTK-wgan/spec/mel_mean_std.npy"]
+    # hparams += ["batch_size=16",
+    #            "speaker_adversial_loss_w=20.0",
+    #            "ce_loss=False",
+    #            "speaker_classifier_loss_w=0.1",
+    #            "contrastive_loss_w=30.0"]
+    # args.hparams = ','.join(hparams)
+
+    # create log directory due to saving files before training starts
+    if not os.path.isdir(args.output_directory):
+        print('creating dir: {} ...'.format(args.output_directory))
+        os.makedirs(args.output_directory)
+        os.chmod(args.output_directory, 0o775)
+
     hparams = create_hparams(args.hparams)
+
+    if args.n_gpus == 1:
+      os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
 
     torch.backends.cudnn.enabled = hparams.cudnn_enabled
     torch.backends.cudnn.benchmark = hparams.cudnn_benchmark
 
-    print(("Distributed Run:", hparams.distributed_run))
-    print(("cuDNN Enabled:", hparams.cudnn_enabled))
-    print(("cuDNN Benchmark:", hparams.cudnn_benchmark))
+    print("Training List:", hparams.training_list)
+    print("Validation List:", hparams.validation_list)
+    print("Mel Mean Std:", hparams.mel_mean_std)
+    print("Batch Size:", hparams.batch_size)
+    print("Distributed Run:", hparams.distributed_run)
+    print("cuDNN Enabled:", hparams.cudnn_enabled)
+    print("cuDNN Benchmark:", hparams.cudnn_benchmark)
 
-    train(args.output_directory, args.log_directory, args.checkpoint_path,
-          args.warm_start, args.n_gpus, args.rank, args.group_name, hparams)
+    output_directory = args.output_directory
+    log_directory = args.log_directory
+    checkpoint_path = args.checkpoint_path
+    warm_start = args.warm_start
+    n_gpus = args.n_gpus
+    rank = args.rank
+    group_name = args.group_name
+
+    train(output_directory, log_directory, checkpoint_path,
+          warm_start, n_gpus, rank, group_name, hparams)

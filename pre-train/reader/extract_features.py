@@ -12,11 +12,12 @@ def extract_mel_spec(filename):
     saved mel shape [n_frames, 80]
     '''
     y, sample_rate = librosa.load(filename)
+    ext = os.path.splitext(filename)[1]
 
     spec = librosa.core.stft(y=y, 
                              n_fft=2048, 
-                             hop_length=200, 
-                             win_length=800,
+                             hop_length=256, #original:200
+                             win_length=1024, #original:800
                              window='hann',
                              center=True,
                              pad_mode='reflect')
@@ -34,8 +35,8 @@ def extract_mel_spec(filename):
                                                      )
     log_mel_spectrogram = np.log(mel_spectrogram).astype(np.float32)
 
-    np.save(file=filename.replace(".wav", ".spec"), arr=log_spectrogram.T)
-    np.save(file=filename.replace(".wav", ".mel"), arr=log_mel_spectrogram.T)
+    np.save(file=filename.replace(ext, ".spec"), arr=log_spectrogram.T)
+    np.save(file=filename.replace(ext, ".mel"), arr=log_mel_spectrogram.T)
 
 
 def extract_phonemes(filename):
@@ -56,13 +57,15 @@ def extract_phonemes(filename):
     with open(filename.replace(".txt", ".phones"), "w") as outfile:
         print(phones, file=outfile)
 
-def extract_dir(root, kind):
+def extract_dir(root, kind, ext=None):
     if kind =="audio":
         extraction_function=extract_mel_spec
-        ext=".wav"
+        if not ext:
+            ext=".wav"
     elif kind =="text":
         extraction_function=extract_phonemes
-        ext=".txt"
+        if not ext:
+            ext=".txt"
     else:
         print("ERROR: invalid args")
         sys.exit(1)
@@ -120,14 +123,18 @@ def estimate_mean_std(root, num=2000):
         
 if __name__ == "__main__":
     try:
+        # path = '/data/evs/VCTK/VCTK-Corpus-0.92/txt'
+        # kind = 'text'
+        # ext = '.txt'
         path = sys.argv[1]
         kind = sys.argv[2]
+        ext = sys.argv[3]
     except:
         print(
         '''
         Usage:
         
-        $ extract_features.py "path" "kind"
+        $ extract_features.py "path" "kind" "ext"
         
         path: (str) Root path to data directory, this dir will be traversed
                     and all files matching the appropriate file extension
@@ -140,5 +147,5 @@ if __name__ == "__main__":
         )
         sys.exit(1)
 
-    extract_dir(path,kind)
+    extract_dir(path,kind,ext)
     
