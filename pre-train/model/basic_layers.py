@@ -81,7 +81,8 @@ class Prenet(nn.Module):
 
     def forward(self, x):
         for linear in self.layers:
-            x = F.dropout(F.relu(linear(x)), p=0.5, training=True)
+            x = F.dropout(F.relu(linear(x)), p=0.5, training=True) # original
+            # x = F.dropout(F.relu(linear(x), inplace=False), p=0.5, training=True)
         return x
 
 

@@ -252,6 +252,7 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, n_gpus,
             epoch_offset = max(0, int(iteration / len(train_loader)))
 
     model.train()
+    # torch.autograd.set_detect_anomaly(True)
     # ================ MAIN TRAINNIG LOOP! ===================
     for epoch in range(epoch_offset, hparams.epochs):
         print(("Epoch: {}".format(epoch)))
