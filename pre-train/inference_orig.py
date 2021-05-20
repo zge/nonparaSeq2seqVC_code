@@ -2,15 +2,12 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pylab as plt
 
+
 import os
 import librosa
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
-
-import sys
-if os.path.isdir(os.path.join(os.getcwd(),'pre-train')):
-    sys.path.append('pre-train')
 
 from reader import TextMelIDLoader, TextMelIDCollate, id2ph, id2sp
 from hparams import create_hparams
@@ -18,23 +15,17 @@ from model import Parrot, lcm
 from train import load_model
 import scipy.io.wavfile
 
-os.chdir('pre-train')
 
 ########### Configuration ###########
 hparams = create_hparams()
 
-# #generation list
-# hlist = '/home/jxzhang/Documents/DataSets/VCTK/list/hold_english.list'
-# tlist = '/home/jxzhang/Documents/DataSets/VCTK/list/eval_english.list'
-
-hlist = '/data/evs/VCTK/VCTK-Corpus-0.92/list/audio-txt-nframe-nphone_no-indian_test.txt'
-tlist = '/data/evs/VCTK/VCTK-Corpus-0.92/list/audio-txt-nframe-nphone_no-indian_valid.txt'
+#generation list
+hlist = '/home/jxzhang/Documents/DataSets/VCTK/list/hold_english.list'
+tlist = '/home/jxzhang/Documents/DataSets/VCTK/list/eval_english.list'
 
 # use seen (tlist) or unseen list (hlist)
 test_list = tlist
-# checkpoint_path='outdir/checkpoint_0'
-checkpoint_path = 'outdir/vctk/test_orig_bs16/checkpoint_1000000'
-
+checkpoint_path='outdir/checkpoint_0'
 # TTS or VC task?
 input_text=False
 # number of utterances for generation
@@ -49,8 +40,7 @@ def plot_data(data, fn, figsize=(12, 4)):
             ax = axes
         else:
             ax = axes[i]
-        # origin='bottom' no longer working after matplotlib 3.3.2
-        g = ax.imshow(data[i], aspect='auto', origin='lower',
+        g = ax.imshow(data[i], aspect='auto', origin='bottom', 
                        interpolation='none')
         plt.colorbar(g, ax=ax)
     plt.savefig(fn)
@@ -77,10 +67,9 @@ task = 'tts' if input_text else 'vc'
 path_save = os.path.join(checkpoint_path.replace('checkpoint', 'test'), task)
 path_save += '_seen' if test_list == tlist else '_unseen'
 if not os.path.exists(path_save):
-    print('creating dir: {}'.format(path_save))
     os.makedirs(path_save)
 
-print('path to save: {}'.format(path_save))
+print(path_save)
 
 def recover_wav(mel, wav_path, ismel=False, 
         n_fft=2048, win_length=800,hop_length=200):
@@ -118,7 +107,6 @@ def recover_wav(mel, wav_path, ismel=False,
 
 
 text_input, mel, spec, speaker_id = test_set[0]
-print(' '.join([id2ph[int(id)] for id in text_input]))
 reference_mel = mel.cuda().unsqueeze(0) 
 ref_sp = id2sp[speaker_id.item()]
 
@@ -146,18 +134,15 @@ with torch.no_grad():
         if i == NUM:
             break
         
-        # sample_id = sample_list[i].split('/')[-1][9:17]
-        sample_id = sample_list[i].split('/')[-1][:8]
+        sample_id = sample_list[i].split('/')[-1][9:17]
         print(('%d index %s, decoding ...'%(i,sample_id)))
 
-        # x (4 items): text_input_padded, mel_padded, text_lengths, mel_lengths
-        # y (5 items): text_input_padded, mel_padded, spc_padded,  speaker_id, stop_token_padded
         x, y = model.parse_batch(batch)
         predicted_mel, post_output, predicted_stop, alignments, \
             text_hidden, audio_seq2seq_hidden, audio_seq2seq_phids, audio_seq2seq_alignments, \
             speaker_id = model.inference(x, input_text, reference_mel, hparams.beam_width)
 
-        post_output = post_output.data.cpu().numpy()[0] #-> [n_mel_channels, n_frames]
+        post_output = post_output.data.cpu().numpy()[0]
         alignments = alignments.data.cpu().numpy()[0].T
         audio_seq2seq_alignments = audio_seq2seq_alignments.data.cpu().numpy()[0].T
 
@@ -178,18 +163,17 @@ with torch.no_grad():
         plot_data([alignments, audio_seq2seq_alignments], 
             os.path.join(path_save, 'Ali_%s_ref_%s_%s.pdf'%(sample_id, ref_sp, task)))
         
-        plot_data([np.hstack([text_hidden, audio_seq2seq_hidden])],
+        plot_data([np.hstack([text_hidden, audio_seq2seq_hidden])], 
             os.path.join(path_save, 'Hid_%s_ref_%s_%s.pdf'%(sample_id, ref_sp, task)))
          
         audio_seq2seq_phids = [id2ph[id] for id in audio_seq2seq_phids[:-1]]
         target_text = y[0].data.cpu().numpy()[0]
         target_text = [id2ph[id] for id in target_text[:]]
 
-        # to-do: output text for reference
+        print('Sounds like %s, Decoded text is '%(id2sp[speaker_id]))
 
-        print('Sounds like %s'%(id2sp[speaker_id]))
-        print('Decoded text: {}'.format(' '.join(audio_seq2seq_phids)))
-        print('Target text: {}'.format(' '.join(target_text)))
+        print(audio_seq2seq_phids)
+        print(target_text)
        
         err = levenshteinDistance(audio_seq2seq_phids, target_text)
         print(err, len(target_text))
@@ -199,4 +183,5 @@ with torch.no_grad():
 
 print(float(errs)/float(totalphs))
 
+        
         

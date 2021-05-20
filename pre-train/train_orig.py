@@ -18,7 +18,7 @@ from torch.utils.data import DataLoader
 from model import Parrot, ParrotLoss, lcm
 from reader import TextMelIDLoader, TextMelIDCollate
 from logger import ParrotLogger
-from hparams import create_hparams
+from hparams_orig import create_hparams
 
 
 def batchnorm_to_float(module):
