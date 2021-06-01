@@ -6,7 +6,7 @@
 # Zhenhao Ge, 2021-03-15
 
 FROM_DIR=/data/evs/VCTK/VCTK-Corpus-0.92/wav48_silence_trimmed
-TO_DIR=/data/evs/VCTK/VCTK-sie/wav22_silence_trimmed
+TO_DIR=/data/evs/VCTK/VCTK-wgan/wav22_silence_trimmed
 
 [ ! -d ${TO_DIR} ] && mkdir -p ${TO_DIR}
 
@@ -22,8 +22,9 @@ sr2=22050
 wav_files=($(find ${FROM_DIR} -name "*${ext1}" | sort))
 nwavs=${#wav_files[@]}
 
-## print # of wav files
-#echo "# of wavs: ${nwavs}"
+# print # of wav files
+echo "# of wavs in ${FROM_DIR}: ${nwavs}"
+
 #exit 0
 
 for (( i=0; i<nwavs; i++ )); do

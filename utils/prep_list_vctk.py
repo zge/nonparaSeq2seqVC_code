@@ -1,4 +1,4 @@
-# Prepare file lists and save in the data list directory
+# Prepare file lists for VCTK and save in the data list directory
 # columns: acoustic feature path | phones | #frames | #phones
 #
 # Zhenhao Ge, 2021-03-10
@@ -15,12 +15,14 @@ sys.path.append('utils')
 
 from utils import get_meta, sel_speaker
 from utils import get_accent2nspk, write_flist, read_flist, exclude_mono
-from utils import get_uid2text, get_uid2ntexts, find_sid2nuids # for database exploration
 from utils import get_2dflist, get_uids, sel_flist
+
+# for database exploration
+from utils import get_uid2text, get_uid2ntexts, find_sid2nuids
 
 def parse_args():
 
-  usage = 'usage: prepare file lists'
+  usage = 'usage: prepare file lists for VCTK database'
   parser = argparse.ArgumentParser(description=usage)
   parser.add_argument('-da', '--acoustic-dir', type=str,
                       help='directory of acoustic data')
@@ -58,6 +60,7 @@ def main():
   # version = 'VCTK-sie' # 'VCTK-Corpus-0.92' or 'VCTK-sie'
   # sr = '22k' # '22k' or '48k'
 
+  # speakers that the original authors selected (another source)
   spk_file = os.path.join(datadir, version, 'speaker-selected.txt')
   sids_sel = ''.join(open(spk_file).readlines()).split('\n')
 
@@ -66,8 +69,9 @@ def main():
 
   # interactive mode (comment out before running the script)
   args = argparse.ArgumentParser()
-  args.acoustic_dir = '{}/{}/wav{}_silence_trimmed'.format(datadir, version, sr[:2])
-  args.text_dir = '{}/{}/txt'.format(datadir, version)
+  # args.acoustic_dir = '{}/{}/wav{}_silence_trimmed'.format(datadir, version, sr[:2])
+  args.acoustic_dir = '{}/{}/spec'.format(datadir, version)
+  args.text_dir = '{}/{}/text'.format(datadir, version)
   args.list_dir = '{}/{}/list'.format(datadir, version)
   args.metafile = '{}/{}/speaker-info.txt'.format(datadir, version)
   args.delimiter = '|'
@@ -75,7 +79,7 @@ def main():
   args.ordered = True
   args.gender = 'both'
   args.accents_excluded = ['Indian']
-  args.mic = 'mixed'
+  args.mic = 'dual'
 
   # print out arguments
   print('acoustic dir: {}'.format(args.acoustic_dir))
@@ -89,7 +93,7 @@ def main():
   print('accents excluded: {}'.format(args.accents_excluded))
   print('microphone: {}'.format(args.mic))
 
-  # get speaker info from meta file
+  # get speaker info (list of dicts) from meta file
   speakers = get_meta(args.metafile)
 
   # accent-to-speaker distribution from speaker info
