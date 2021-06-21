@@ -14,6 +14,15 @@ def read_text(fn):
             text.append([int(start), int(end), phone])
     return text
 
+
+def read_text2(fn):
+  '''
+  read phone from file of the format:
+  ph1 ph2 ph3 ...
+  '''
+  text = open(fn).readline().rstrip().split()
+  return text
+
 class TextMelIDLoader(torch.utils.data.Dataset):
     
     def __init__(self, list_file, mean_std_file, speaker_A, speaker_B, shuffle=True, pids=None):
@@ -23,8 +32,9 @@ class TextMelIDLoader(torch.utils.data.Dataset):
         with open(list_file) as f:
             lines = f.readlines()
             for line in lines:
-                path, n_frame, n_text = line.strip().split()
-                speaker_id = path.split('/')[-3].split('_')[2]
+                path, text, n_frame, n_text = line.strip().split('|')
+                # speaker_id = path.split('/')[-3].split('_')[2]
+                speaker_id = path.split('/')[-2]
 
                 if not pids is None:
                     if not speaker_id in pids:
@@ -51,15 +61,10 @@ class TextMelIDLoader(torch.utils.data.Dataset):
     def get_path_id(self, path):
         # Custom this function to obtain paths and speaker id
         # Deduce filenames
-        text_path = path.replace('spec', 'text').replace('npy', 'txt').replace('log-', '')
-        mel_path = path.replace('spec', 'mel')
-        speaker_id = path.split('/')[-3].split('_')[2]
-        # use non-trimed version #
-        spec_path = path.replace('spec_trim', 'spec')
-        text_path = text_path.replace('text_trim', 'text')
-        mel_path = mel_path.replace('mel_trim', 'mel')
-        speaker_id = path.split('/')[-3].split('_')[2]
-
+        spec_path = '{}.spec.npy'.format(path)
+        mel_path = '{}.mel.npy'.format(path)
+        text_path = '{}.phones'.format(path.replace('spec-wgan', 'text'))
+        speaker_id = path.split('/')[-2]
         return mel_path, spec_path, text_path, speaker_id
 
     def get_text_mel_id_pair(self, path):
@@ -89,11 +94,13 @@ class TextMelIDLoader(torch.utils.data.Dataset):
         
     def get_text(self,text_path):
 
-        text = read_text(text_path)
+        #text = read_text(text_path)
+        text = read_text2(text_path)
         text_input = []
 
-        for start, end, ph in text:
-            dur = int((end - start) / 125000. + 0.6)
+        # for start, end, ph in text:
+        #     dur = int((end - start) / 125000. + 0.6)
+        for ph in text:
             text_input.append(ph2id[ph])
         
         return text_input

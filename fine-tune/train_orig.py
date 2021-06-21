@@ -5,10 +5,6 @@ import math
 from numpy import finfo
 import numpy as np
 
-import sys
-if os.path.isdir(os.path.join(os.getcwd(),'fine-tune')):
-  sys.path.append('fine-tune')
-
 import torch
 from distributed import apply_gradient_allreduce
 import torch.distributed as dist
@@ -19,10 +15,6 @@ from model import Parrot, ParrotLoss, lcm
 from reader import TextMelIDLoader, TextMelIDCollate, id2sp
 from logger import ParrotLogger
 from hparams import create_hparams
-
-if os.path.basename(os.getcwd()) != 'fine-tune':
-  os.chdir('fine-tune')
-print('current dir: {}'.format(os.getcwd()))
 
 
 def batchnorm_to_float(module):
@@ -351,7 +343,8 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, n_gpus,
 
             iteration += 1
 
-def parse_args():
+
+if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-o', '--output_directory', type=str,
                         help='directory to save checkpoints')
@@ -365,75 +358,20 @@ def parse_args():
                         required=False, help='number of gpus')
     parser.add_argument('--rank', type=int, default=0,
                         required=False, help='rank of current gpu')
-    parser.add_argument('--gpu', type=int, default=0,
-                        required=False, help='current gpu device id')
     parser.add_argument('--group_name', type=str, default='group_name',
                         required=False, help='Distributed group name')
     parser.add_argument('--hparams', type=str,
                         required=False, help='comma separated name=value pairs')
-    return parser.parse_args()
 
-if __name__ == '__main__':
-
-    # # runtime mode
-    # args = parse_args()
-
-    # interactive mode
-    args = argparse.ArgumentParser()
-    args.log_directory = 'logdir_bdl_slt'
-    args.output_directory = 'outdir/arctic/test_wgan_bs16'
-    args.n_gpus = 1
-    args.rank = 0
-    args.gpu = 1
-    args.checkpoint_path = '../pre-train/outdir/vctk/test_wgan_bs16/checkpoint_302000'
-    args.warm_start = True
-    args.group_name = 'group_name'
-    hparams = ["speaker_A=bdl",
-               "speaker_B=slt",
-               "a_embedding_path=outdir/embeddings/bdl.npy",
-               "b_embedding_path=outdir/embeddings/slt.npy",
-               "training_list=/data/evs/Arctic/list/wgan-txt-nframe-nphone_bdl_slt_train_nonpara.txt",
-               "validation_list=/data/evs/Arctic/list/wgan-txt-nframe-nphone_bdl_slt_valid.txt",
-               "contrastive_loss_w=30.0",
-               "speaker_adversial_loss_w=0.2",
-               "speaker_classifier_loss_w=1.0",
-               "decay_every=7",
-               "epochs=70",
-               "warmup=7",
-               "batch_size=8",
-               "SC_kernel_size=1",
-               "learning_rate=1e-3"]
-    args.hparams = ','.join(hparams)
-
-    # create log directory due to saving files before training starts
-    if not os.path.isdir(args.output_directory):
-        print('creating dir: {} ...'.format(args.output_directory))
-        os.makedirs(args.output_directory)
-        os.chmod(args.output_directory, 0o775)
-
+    args = parser.parse_args()
     hparams = create_hparams(args.hparams)
-
-    if args.n_gpus == 1:
-      os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
 
     torch.backends.cudnn.enabled = hparams.cudnn_enabled
     torch.backends.cudnn.benchmark = hparams.cudnn_benchmark
 
-    print("Training List:", hparams.training_list)
-    print("Validation List:", hparams.validation_list)
-    print("Mel Mean Std:", hparams.mel_mean_std)
-    print("Batch Size:", hparams.batch_size)
-    print("Distributed Run:", hparams.distributed_run)
-    print("cuDNN Enabled:", hparams.cudnn_enabled)
-    print("cuDNN Benchmark:", hparams.cudnn_benchmark)
+    print(("Distributed Run:", hparams.distributed_run))
+    print(("cuDNN Enabled:", hparams.cudnn_enabled))
+    print(("cuDNN Benchmark:", hparams.cudnn_benchmark))
 
-    output_directory = args.output_directory
-    log_directory = args.log_directory
-    checkpoint_path = args.checkpoint_path
-    warm_start = args.warm_start
-    n_gpus = args.n_gpus
-    rank = args.rank
-    group_name = args.group_name
-
-    train(output_directory, log_directory, checkpoint_path,
-          warm_start, n_gpus, rank, group_name, hparams)
+    train(args.output_directory, args.log_directory, args.checkpoint_path,
+          args.warm_start, args.n_gpus, args.rank, args.group_name, hparams)

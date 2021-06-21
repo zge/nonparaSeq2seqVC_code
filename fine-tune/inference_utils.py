@@ -13,7 +13,7 @@ def plot_data(data, fn, figsize=(12, 4)):
             ax = axes
         else:
             ax = axes[i]
-        g = ax.imshow(data[i], aspect='auto', origin='bottom', 
+        g = ax.imshow(data[i], aspect='auto', origin='lower',
                        interpolation='none')
         plt.colorbar(g, ax=ax)
     plt.savefig(fn)

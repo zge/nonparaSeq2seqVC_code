@@ -1,21 +1,16 @@
-# slt to bdl, bdl to slt #
+# slt to rms, rms to slt #
 RUN_EMB=true
 RUN_TRAIN=true
 RUN_GEN=true
 
-export CUDA_VISIBLE_DEVICES=1
-speaker_A='bdl'
-speaker_B='slt'
-
-training_list="/data/evs/Arctic/list/wgan-txt-nframe-nphone_${speaker_A}_${speaker_B}_train_nonpara.txt"
-validation_list="/data/evs/Arctic/list/wgan-txt-nframe-nphone_${speaker_A}_${speaker_B}_valid.txt"
-
-## original lists
-#training_list="/home/jxzhang/Documents/DataSets/cmu_us_slt_arctic-0.95-release/list/train_non-parallel_${speaker_A}_${speaker_B}.list"
-#validation_list="/home/jxzhang/Documents/DataSets/cmu_us_slt_arctic-0.95-release/list/eval_${speaker_A}_${speaker_B}.list"
+export CUDA_VISIBLE_DEVICES=2
+speaker_A='slt'
+speaker_B='rms'
+training_list="/home/jxzhang/Documents/DataSets/cmu_us_slt_arctic-0.95-release/list/train_non-parallel_${speaker_A}_${speaker_B}.list"
+validation_list="/home/jxzhang/Documents/DataSets/cmu_us_slt_arctic-0.95-release/list/eval_${speaker_A}_${speaker_B}.list"
 
 logdir="logdir_${speaker_A}_${speaker_B}"
-pretrain_checkpoint_path='../pre-train/outdir/vctk/test_wgan_bs16/checkpoint_302000'
+pretrain_checkpoint_path='../pre-train/outdir/checkpoint_0'
 finetune_ckpt="checkpoint_100"
 
 contrastive_loss_w=30.0
@@ -43,9 +38,7 @@ if $RUN_TRAIN
 then
     echo 'running trainings...'
     python train.py  \
-        -l $logdir \
-        -o outdir/arctic/test_wgan_bs16 \
-        --n_gpus=1 \
+        -l $logdir -o outdir --n_gpus=1 \
         -c $pretrain_checkpoint_path \
         --warm_start \
         --hparams=speaker_A=$speaker_A,\

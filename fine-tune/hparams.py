@@ -9,7 +9,7 @@ def create_hparams(hparams_string=None, verbose=False):
         # Experiment Parameters        #
         ################################
         epochs=70,
-        iters_per_checkpoint=100,
+        iters_per_checkpoint=500,
         seed=1234,
         dynamic_loss_scaling=True,
         fp16_run=False,
@@ -22,12 +22,16 @@ def create_hparams(hparams_string=None, verbose=False):
         ################################
         # Data Parameters              #
         ################################
-        training_list='/home/jxzhang/Documents/DataSets/cmu_us_slt_arctic-0.95-release/list/train_non-parallel_slt_rms.list',
-        validation_list='/home/jxzhang/Documents/DataSets/cmu_us_slt_arctic-0.95-release/list/eval_slt_rms.list',
-        mel_mean_std='/home/jxzhang/Documents/DataSets/VCTK/mel_mean_std.npy',
+        training_list='/data/evs/Arctic/list/wgan-txt-nframe-nphone_bdl_slt_train_nonpara.txt',
+        validation_list='/data/evs/Arctic/list/wgan-txt-nframe-nphone_bdl_slt_valid.txt',
+        mel_mean_std='/data/evs/VCTK/VCTK-wgan/spec/mel_mean_std.npy',
+
+        # training_list='/home/jxzhang/Documents/DataSets/cmu_us_slt_arctic-0.95-release/list/train_non-parallel_slt_rms.list',
+        # validation_list='/home/jxzhang/Documents/DataSets/cmu_us_slt_arctic-0.95-release/list/eval_slt_rms.list',
+        # mel_mean_std='/home/jxzhang/Documents/DataSets/VCTK/mel_mean_std.npy',
 
         speaker_A='slt',
-        speaker_B='rms',
+        speaker_B='bdl',
         a_embedding_path='zero_embeddings.npy',
         b_embedding_path='zero_embeddings.npy',
         ################################

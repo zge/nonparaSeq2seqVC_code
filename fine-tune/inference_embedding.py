@@ -3,6 +3,10 @@ import numpy as np
 import torch
 import argparse
 
+import sys
+if os.path.isdir(os.path.join(os.getcwd(),'fine-tune')):
+  sys.path.append('fine-tune')
+
 from hparams import create_hparams
 from model import lcm
 from train import load_model
@@ -10,12 +14,31 @@ from torch.utils.data import DataLoader
 from reader import TextMelIDLoader, TextMelIDCollate, id2sp
 from inference_utils import plot_data
 
-parser = argparse.ArgumentParser()
-parser.add_argument('-c', '--checkpoint_path', type=str,
-                        help='directory to save checkpoints')
-parser.add_argument('--hparams', type=str,
-                        required=False, help='comma separated name=value pairs')
-args = parser.parse_args()
+if os.path.basename(os.getcwd()) != 'fine-tune':
+  os.chdir('fine-tune')
+print('current dir: {}'.format(os.getcwd()))
+
+def parse_args():
+
+  parser = argparse.ArgumentParser()
+  parser.add_argument('-c', '--checkpoint_path', type=str,
+                          help='directory to save checkpoints')
+  parser.add_argument('--hparams', type=str,
+                          required=False, help='comma separated name=value pairs')
+
+  return parser.parse_args()
+
+# runtime mode
+args = parse_args()
+
+# # interactive mode
+# args = argparse.ArgumentParser()
+# args.checkpoint_path = os.path.abspath(os.path.join(os.getcwd(),
+#   '../pre-train/outdir/vctk/test_wgan_bs16/checkpoint_302000'))
+# hparams = ["speaker_A=slt", "speaker_B=bdl",
+#            "training_list=/data/evs/Arctic/list/wgan-txt-nframe-nphone_bdl_slt_train_nonpara.txt",
+#           "SC_kernel_size=1"]
+# args.hparams = ','.join(hparams)
 
 checkpoint_path=args.checkpoint_path
 
@@ -30,9 +53,9 @@ def gen_embedding(speaker):
 
     training_list = hparams.training_list
 
-    train_set_A = TextMelIDLoader(training_list, hparams.mel_mean_std, hparams.speaker_A,
-            hparams.speaker_B, 
-            shuffle=False,pids=[speaker])
+    train_set_A = TextMelIDLoader(training_list, hparams.mel_mean_std,
+                                  hparams.speaker_A, hparams.speaker_B,
+                                  shuffle=False,pids=[speaker])
             
     collate_fn = TextMelIDCollate(lcm(hparams.n_frames_per_step_encoder,
                             hparams.n_frames_per_step_decoder))
@@ -59,6 +82,7 @@ def gen_embedding(speaker):
         
     print(speaker_embeddings.shape)
     if not os.path.exists('outdir/embeddings'):
+        print('creating outdir/embeddings ...')
         os.makedirs('outdir/embeddings')
     
     np.save('outdir/embeddings/%s.npy'%speaker, speaker_embeddings)
