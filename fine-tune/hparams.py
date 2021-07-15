@@ -8,7 +8,7 @@ def create_hparams(hparams_string=None, verbose=False):
         ################################
         # Experiment Parameters        #
         ################################
-        epochs=70,
+        epochs=700,
         iters_per_checkpoint=500,
         seed=1234,
         dynamic_loss_scaling=True,
@@ -30,8 +30,8 @@ def create_hparams(hparams_string=None, verbose=False):
         # validation_list='/home/jxzhang/Documents/DataSets/cmu_us_slt_arctic-0.95-release/list/eval_slt_rms.list',
         # mel_mean_std='/home/jxzhang/Documents/DataSets/VCTK/mel_mean_std.npy',
 
-        speaker_A='slt',
-        speaker_B='bdl',
+        speaker_A='bdl',
+        speaker_B='slt',
         a_embedding_path='zero_embeddings.npy',
         b_embedding_path='zero_embeddings.npy',
         ################################

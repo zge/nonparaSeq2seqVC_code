@@ -1,7 +1,7 @@
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pylab as plt
-from shutil import copyfile
+
 
 import os
 import librosa
@@ -10,44 +10,24 @@ import torch
 import argparse
 from torch.utils.data import DataLoader
 
-import sys
-if os.path.isdir(os.path.join(os.getcwd(),'fine-tune')):
-    sys.path.append('fine-tune')
-
 from reader import TextMelIDLoader, TextMelIDCollate, id2ph, id2sp
 from hparams import create_hparams
 from model import Parrot, lcm
-from inference_utils import plot_data, levenshteinDistance, recover_wav_wgan
-import scipy.io.wavfile
 from train import load_model
-
-if os.path.basename(os.getcwd()) != 'fine-tune':
-  os.chdir('fine-tune')
-print('current dir: {}'.format(os.getcwd()))
+from inference_utils import plot_data, levenshteinDistance, recover_wav
+import scipy.io.wavfile
 
 AA_tts, BB_tts, AB_vc, BA_vc = False, False, True, True
 
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--checkpoint_path', type=str,
-                            help='directory to save checkpoints')
-    parser.add_argument('--num', type=int, default=10,
-                            required=False, help='num of samples to be generated')
-    parser.add_argument('--hparams', type=str,
-                            required=False, help='comma separated name=value pairs')
-    return parser.parse_args()
+parser = argparse.ArgumentParser()
+parser.add_argument('-c', '--checkpoint_path', type=str,
+                        help='directory to save checkpoints')
+parser.add_argument('--num', type=int, default=10,
+                        required=False, help='num of samples to be generated')
+parser.add_argument('--hparams', type=str,
+                        required=False, help='comma separated name=value pairs')
+args = parser.parse_args()
 
-# runtime mode
-args = parse_args()
-
-# # interactive mode
-# args = argparse.ArgumentParser()
-# # args.checkpoint_path = 'outdir/arctic/test_wgan_bs16/logdir_bdl_slt/checkpoint_8700'
-# args.checkpoint_path = 'outdir/arctic/test_wgan_bs16_700ep/logdir_bdl_slt/checkpoint_61000'
-# args.num = 10
-# hparams = ["validation_list=/data/evs/Arctic/list/wgan-txt-nframe-nphone_bdl_slt_valid.txt",
-#                "SC_kernel_size=1"]
-# args.hparams = ','.join(hparams)
 
 hparams = create_hparams(args.hparams)
 
@@ -118,10 +98,17 @@ def get_path(input_text, A, B):
     
     path_save += '_%s_to_%s'%(A, B)
 
-    subfolders = ['wav_mel', 'mel', 'hid', 'ali', 'txt', 'wav']
-    for folder in subfolders:
-        if not os.path.exists(os.path.join(path_save, folder)):
-            os.makedirs(os.path.join(path_save, folder))
+    if not os.path.exists(os.path.join(path_save,'wav_mel')):
+        os.makedirs(os.path.join(path_save,'wav_mel'))
+
+    if not os.path.exists(os.path.join(path_save,'mel')):
+        os.makedirs(os.path.join(path_save,'mel'))
+
+    if not os.path.exists(os.path.join(path_save,'hid')):
+        os.makedirs(os.path.join(path_save,'hid'))
+    
+    if not os.path.exists(os.path.join(path_save,'ali')):
+        os.makedirs(os.path.join(path_save,'ali'))
 
     print(path_save)
     return path_save
@@ -131,32 +118,15 @@ def generate(loader, reference_mel, beam_width, path_save, ref_sp,
         sample_list, num=10, input_text=False):
 
     with torch.no_grad():
-        errs = []
-        totalphs = []
+        errs = 0
+        totalphs = 0
 
         for i, batch in enumerate(loader):
             if i == num:
                 break
             
-            #sample_id = sample_list[i].split('/')[-1][9:17+4]
-            sample_id = sample_list[i].split('/')[-1]
-            print(('index:%d, decoding %s ...'%(i, sample_id)))
-
-            text_file = '{}.txt'.format(os.path.basename(sample_list[i]))
-            text_path = os.path.dirname(sample_list[i]).replace('spec-wgan', 'text')
-            text_path = os.path.join(text_path, text_file)
-            text = open(text_path, 'r').readlines()[0].rstrip()
-            print('{}: {}'.format(text_file, text))
-
-            text_path_output = os.path.join(path_save, 'txt/Txt_{}'.format(text_file))
-            copyfile(text_path, text_path_output)
-
-            wav_file = '{}.wav'.format(os.path.basename(sample_list[i]))
-            wav_path = os.path.dirname(sample_list[i]).replace('spec-wgan', 'wav22_silence_trimmed')
-            wav_path = os.path.join(wav_path, wav_file)
-
-            wav_path_output = os.path.join(path_save, 'wav/Wav_{}'.format(wav_file))
-            copyfile(wav_path, wav_path_output)
+            sample_id = sample_list[i].split('/')[-1][9:17+4]
+            print(('%d index %s, decoding ...'%(i,sample_id)))
 
             x, y = model.parse_batch(batch)
             predicted_mel, post_output, predicted_stop, alignments, \
@@ -174,13 +144,13 @@ def generate(loader, reference_mel, beam_width, path_save, ref_sp,
 
             task = 'TTS' if input_text else 'VC'
 
-            wav_path = os.path.join(path_save, 'wav_mel/Wav_%s_ref_%s_%s.wav' % (sample_id, ref_sp, task))
-            # recover_wav(post_output, wav_path, hparams.mel_mean_std, ismel=ISMEL)
-            recover_wav_wgan(post_output, wav_path, hparams.mel_mean_std, ismel=ISMEL,
-                             n_fft=1024, win_length=1024, hop_length=256)
+            recover_wav(post_output, 
+                        os.path.join(path_save, 'wav_mel/Wav_%s_ref_%s_%s.wav'%(sample_id, ref_sp, task)),
+                        hparams.mel_mean_std, 
+                        ismel=ISMEL)
             
             post_output_path = os.path.join(path_save, 'mel/Mel_%s_ref_%s_%s.npy'%(sample_id, ref_sp, task))
-            np.save(post_output_path, post_output.T)
+            np.save(post_output_path, post_output)
                     
             plot_data([alignments, audio_seq2seq_alignments], 
                 os.path.join(path_save, 'ali/Ali_%s_ref_%s_%s.pdf'%(sample_id, ref_sp, task)))
@@ -200,20 +170,11 @@ def generate(loader, reference_mel, beam_width, path_save, ref_sp,
             err = levenshteinDistance(audio_seq2seq_phids, target_text)
             print(err, len(target_text))
 
-            errs.append(err)
-            totalphs.append(len(target_text))
+            errs += err
+            totalphs += len(target_text)
 
-    # save phone error rate
-    per = float(sum(errs))/float(sum(totalphs))
-    per_file = os.path.join(path_save, 'per.txt')
-    open(per_file, 'w').writelines('{:.3f}\n'.format(per))
-    open(per_file, 'a').writelines(','.join([str(e) for e in errs]) + '\n')
-    open(per_file, 'a').writelines(','.join([str(l) for l in totalphs]) + '\n')
-
-    # print float(errs)/float(totalphs)
-    # return float(errs)/float(totalphs)
-    return per
-
+    #print float(errs)/float(totalphs)
+    return float(errs)/float(totalphs)
 
 
 ####### TTS A - A ############

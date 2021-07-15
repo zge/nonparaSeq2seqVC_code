@@ -113,8 +113,16 @@ def recover_wav(mel, wav_path, ismel=False,
     shape = spec.shape[1] * hop_length -  hop_length + 1
 
     y = _griffin_lim(spec, shape)
-    scipy.io.wavfile.write(wav_path, 16000, y)
+    scipy.io.wavfile.write(wav_path, 16000, float2pcm(y))
     return y
+
+def float2pcm(sig, dtype='int16'):
+  sig = np.asarray(sig)
+  i = np.iinfo(dtype)
+  abs_max = 2 ** (i.bits-1)
+  offset = i.min + abs_max
+  sig2 = (sig*abs_max + offset).clip(i.min, i.max).astype(dtype)
+  return sig2
 
 
 text_input, mel, spec, speaker_id = test_set[0]

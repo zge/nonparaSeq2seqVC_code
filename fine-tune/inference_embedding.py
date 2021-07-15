@@ -9,10 +9,10 @@ if os.path.isdir(os.path.join(os.getcwd(),'fine-tune')):
 
 from hparams import create_hparams
 from model import lcm
+from inference_utils import plot_data
 from train import load_model
 from torch.utils.data import DataLoader
 from reader import TextMelIDLoader, TextMelIDCollate, id2sp
-from inference_utils import plot_data
 
 if os.path.basename(os.getcwd()) != 'fine-tune':
   os.chdir('fine-tune')

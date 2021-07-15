@@ -381,7 +381,7 @@ if __name__ == '__main__':
     # interactive mode
     args = argparse.ArgumentParser()
     args.log_directory = 'logdir_bdl_slt'
-    args.output_directory = 'outdir/arctic/test_wgan_bs16'
+    args.output_directory = 'outdir/arctic/test_wgan_bs16_700ep'
     args.n_gpus = 1
     args.rank = 0
     args.gpu = 1
@@ -398,8 +398,8 @@ if __name__ == '__main__':
                "speaker_adversial_loss_w=0.2",
                "speaker_classifier_loss_w=1.0",
                "decay_every=7",
-               "epochs=70",
-               "warmup=7",
+               "epochs=700",
+               "warmup=10",
                "batch_size=8",
                "SC_kernel_size=1",
                "learning_rate=1e-3"]

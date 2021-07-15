@@ -35,6 +35,39 @@ def levenshteinDistance(s1, s2):
         distances = distances_
     return distances[-1]
 
+def recover_wav_wgan(mel, wav_path, mel_mean_std, ismel=False,
+        n_fft=1024, win_length=1024,hop_length=256):
+  # parameter set: ParallelWavGAN/egs/so_emo_female/multi_band_melgan.v2.yaml
+  if ismel:
+    mean, std = np.load(mel_mean_std)
+  else:
+    mean, std = np.load(mel_mean_std.replace('mel', 'spec'))
+
+  mean = mean[:, None]
+  std = std[:, None]
+  mel = 1.2 * mel * std + mean
+  mel = 10 ** mel # inverse of log10
+
+  if ismel:
+    filters = librosa.filters.mel(sr=22050, n_fft=1024, n_mels=80, fmin=0, fmax=11025)
+    inv_filters = np.linalg.pinv(filters)
+    spec = np.dot(inv_filters, mel)
+  else:
+    spec = mel
+
+  def _griffin_lim(stftm_matrix, shape, max_iter=50):
+    y = np.random.random(shape)
+    for i in range(max_iter):
+      stft_matrix = librosa.core.stft(y, n_fft=n_fft, win_length=win_length, hop_length=hop_length)
+      stft_matrix = stftm_matrix * stft_matrix / np.abs(stft_matrix)
+      y = librosa.core.istft(stft_matrix, win_length=win_length, hop_length=hop_length)
+    return y
+
+  shape = spec.shape[1] * hop_length - hop_length + 1
+
+  y = _griffin_lim(spec, shape)
+  scipy.io.wavfile.write(wav_path, 22050, float2pcm(y))
+  return y
 
 def recover_wav(mel, wav_path, mel_mean_std, ismel=False,
         n_fft = 2048,win_length=800, hop_length=200):
@@ -66,5 +99,13 @@ def recover_wav(mel, wav_path, mel_mean_std, ismel=False,
     shape = spec.shape[1] * hop_length -  hop_length + 1
 
     y = _griffin_lim(spec, shape)
-    scipy.io.wavfile.write(wav_path, 16000, y)
+    scipy.io.wavfile.write(wav_path, 16000, float2pcm(y))
     return y
+
+def float2pcm(sig, dtype='int16'):
+  sig = np.asarray(sig)
+  i = np.iinfo(dtype)
+  abs_max = 2 ** (i.bits-1)
+  offset = i.min + abs_max
+  sig2 = (sig*abs_max + offset).clip(i.min, i.max).astype(dtype)
+  return sig2
